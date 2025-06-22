@@ -1,0 +1,70 @@
+import { Editor, MarkdownView, Plugin } from "obsidian";
+
+// Remember to rename these classes and interfaces!
+
+export default class HarveyKitPlugin extends Plugin {
+	async onload() {
+		// This adds an editor command that can perform some operation on the current editor instance
+		this.addCommand({
+			id: "harvey-kit-move-tags-to-properties",
+			name: "HarveyKit: Move selected tags to properties",
+			editorCallback: (editor: Editor, view: MarkdownView) => {
+				if (!view.file) {
+					console.error("No view.file");
+					return;
+				}
+
+				let input = editor.getSelection();
+				let isFromSelection = true;
+				if (!input.length) {
+					input = view.editor.getLine(view.editor.getCursor().line);
+					isFromSelection = false;
+				}
+
+				const tagsToMove = input
+					.split(" ")
+					.map((tag) => {
+						tag = tag.trim();
+						if (!tag) {
+							return "";
+						}
+
+						if (tag[0] !== "#") {
+							return "";
+						}
+
+						return tag.slice(1);
+					})
+					.filter((tag) => {
+						return tag.length > 2;
+					});
+
+				view.app.fileManager.processFrontMatter(
+					view.file,
+					(frontmatter) => {
+						console.log("hi");
+						console.log("tags to add", tagsToMove);
+						console.log(frontmatter);
+
+						const currentTags = frontmatter.tags || [];
+
+						const newTags = Array.from(
+							new Set([...currentTags, ...tagsToMove])
+						);
+						newTags.sort();
+
+						frontmatter.tags = newTags;
+					}
+				);
+
+				if (isFromSelection) {
+					editor.replaceSelection("");
+				} else {
+					editor.exec("deleteLine");
+				}
+			},
+		});
+	}
+
+	onunload() {}
+}
