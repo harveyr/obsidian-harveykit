@@ -65,6 +65,7 @@ export class TagComboSearchModal extends FuzzySuggestModal<TagComboListItem> {
 
 		new Notice("Copied search string to clipboard", 3000);
 
+		// https://discord.com/channels/686053708261228577/840286264964022302/1274754359841783889
 		const searchPlugin = (this.app as any).internalPlugins.getPluginById(
 			"global-search"
 		);
