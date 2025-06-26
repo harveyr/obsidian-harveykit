@@ -6,8 +6,13 @@ export default class HarveyKitPlugin extends Plugin {
 	async onload() {
 		// This adds an editor command that can perform some operation on the current editor instance
 		this.addCommand({
+			id: "harvey-kit-explore-tags",
+			name: "Explore tags",
+			editorCallback: (editor: Editor, view: MarkdownView) => {},
+		});
+		this.addCommand({
 			id: "harvey-kit-move-tags-to-properties",
-			name: "HarveyKit: Move selected tags to properties",
+			name: "Move selected tags to properties",
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				if (!view.file) {
 					console.error("No view.file");
