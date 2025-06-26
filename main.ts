@@ -34,6 +34,7 @@ function getTagsForFilePath(app: App, filePath: string): string[] {
 
 interface TagComboListItem {
 	joinedTags: string;
+	paths: string[];
 }
 
 export class TagComboSearchModal extends FuzzySuggestModal<TagComboListItem> {
@@ -48,19 +49,12 @@ export class TagComboSearchModal extends FuzzySuggestModal<TagComboListItem> {
 	getItems(): TagComboListItem[] {
 		return this.allItems;
 	}
+
 	getItemText(item: TagComboListItem): string {
 		return item.joinedTags;
 	}
 
 	onChooseItem(item: TagComboListItem, evt: MouseEvent | KeyboardEvent) {
-		// new Notice(
-		// 	`You selected: ${item.name} (ID: ${item.id}) - ${item.description}`
-		// );
-		// You can add more logic here, e.g., insert text, open a file, etc.
-		console.log("Selected", item);
-
-		// tag:#tools/obsidian/obsidian-tasks path:Journal
-
 		const tags = item.joinedTags.split(" ");
 		const searchStr = tags
 			.map((tag) => {
@@ -68,10 +62,13 @@ export class TagComboSearchModal extends FuzzySuggestModal<TagComboListItem> {
 			})
 			.join(" ");
 		navigator.clipboard.writeText(searchStr);
+
 		new Notice("Copied search string to clipboard", 3000);
-		// const app = this.app as any;
-		// app.commands.executeCommandById("workspace:open-search");
-		// this.openSearchForTagCombo(item);
+
+		const searchPlugin = (this.app as any).internalPlugins.getPluginById(
+			"global-search"
+		);
+		searchPlugin.instance.openGlobalSearch(searchStr);
 	}
 }
 
@@ -86,20 +83,28 @@ export default class HarveyKitPlugin extends Plugin {
 				const { vault } = app;
 				const files = vault.getFiles();
 
-				const tagCombos = new Set<string>();
+				const allTagsMap = new Map<string, Set<string>>();
 
 				files.forEach((file) => {
 					const tags = getTagsForFilePath(app, file.path);
 					const joined = tags.join(" ");
-					tagCombos.add(joined);
+					// tagCombos.add(joined);
+
+					const tagMap = allTagsMap.get(joined) || new Set();
+					tagMap.add(file.path);
+					allTagsMap.set(joined, tagMap);
 				});
 
-				const items: TagComboListItem[] = Array.from(tagCombos)
-					.sort()
-					.map((combo) => {
-						return { joinedTags: combo };
-					});
-
+				const items: TagComboListItem[] = [];
+				for (const joinedTags of allTagsMap.keys()) {
+					const paths = allTagsMap.get(joinedTags);
+					if (paths) {
+						items.push({
+							joinedTags,
+							paths: Array.from(paths),
+						});
+					}
+				}
 				const modal = new TagComboSearchModal(app, items);
 				modal.open();
 			},
