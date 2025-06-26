@@ -88,8 +88,6 @@ export default class HarveyKitPlugin extends Plugin {
 				files.forEach((file) => {
 					const tags = getTagsForFilePath(app, file.path);
 					const joined = tags.join(" ");
-					// tagCombos.add(joined);
-
 					const tagMap = allTagsMap.get(joined) || new Set();
 					tagMap.add(file.path);
 					allTagsMap.set(joined, tagMap);
