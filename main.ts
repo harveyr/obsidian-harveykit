@@ -1,6 +1,79 @@
-import { Editor, MarkdownView, Plugin } from "obsidian";
+import {
+	App,
+	CachedMetadata,
+	TFile,
+	Editor,
+	MarkdownView,
+	Notice,
+	Plugin,
+	FuzzySuggestModal,
+} from "obsidian";
 
 // Remember to rename these classes and interfaces!
+
+function getTagsForFilePath(app: App, filePath: string): string[] {
+	const abstractFile = app.vault.getAbstractFileByPath(filePath);
+
+	if (abstractFile instanceof TFile) {
+		const fileCache: CachedMetadata | null =
+			app.metadataCache.getFileCache(abstractFile);
+
+		const tags = fileCache?.tags?.map((tag) => {
+			return tag.tag;
+		});
+		if (!tags) {
+			return [];
+		}
+
+		tags.sort();
+
+		return tags;
+	}
+	return [];
+}
+
+interface TagComboListItem {
+	joinedTags: string;
+}
+
+export class TagComboSearchModal extends FuzzySuggestModal<TagComboListItem> {
+	private allItems: TagComboListItem[];
+
+	constructor(app: App, items: TagComboListItem[]) {
+		super(app);
+		this.setPlaceholder("Tag combinations"); // Optional: Set a placeholder
+		this.allItems = items;
+	}
+
+	getItems(): TagComboListItem[] {
+		return this.allItems;
+	}
+	getItemText(item: TagComboListItem): string {
+		return item.joinedTags;
+	}
+
+	onChooseItem(item: TagComboListItem, evt: MouseEvent | KeyboardEvent) {
+		// new Notice(
+		// 	`You selected: ${item.name} (ID: ${item.id}) - ${item.description}`
+		// );
+		// You can add more logic here, e.g., insert text, open a file, etc.
+		console.log("Selected", item);
+
+		// tag:#tools/obsidian/obsidian-tasks path:Journal
+
+		const tags = item.joinedTags.split(" ");
+		const searchStr = tags
+			.map((tag) => {
+				return `tag:${tag}`;
+			})
+			.join(" ");
+		navigator.clipboard.writeText(searchStr);
+		new Notice("Copied search string to clipboard", 3000);
+		// const app = this.app as any;
+		// app.commands.executeCommandById("workspace:open-search");
+		// this.openSearchForTagCombo(item);
+	}
+}
 
 export default class HarveyKitPlugin extends Plugin {
 	async onload() {
@@ -8,7 +81,28 @@ export default class HarveyKitPlugin extends Plugin {
 		this.addCommand({
 			id: "harvey-kit-explore-tags",
 			name: "Explore tags",
-			editorCallback: (editor: Editor, view: MarkdownView) => {},
+			editorCallback: (editor: Editor, view: MarkdownView) => {
+				const { app } = view;
+				const { vault } = app;
+				const files = vault.getFiles();
+
+				const tagCombos = new Set<string>();
+
+				files.forEach((file) => {
+					const tags = getTagsForFilePath(app, file.path);
+					const joined = tags.join(" ");
+					tagCombos.add(joined);
+				});
+
+				const items: TagComboListItem[] = Array.from(tagCombos)
+					.sort()
+					.map((combo) => {
+						return { joinedTags: combo };
+					});
+
+				const modal = new TagComboSearchModal(app, items);
+				modal.open();
+			},
 		});
 		this.addCommand({
 			id: "harvey-kit-move-tags-to-properties",
