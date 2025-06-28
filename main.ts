@@ -37,7 +37,6 @@ function getTagsForFilePath(app: App, filePath: string): string[] {
 
 interface TagComboListItem {
 	joinedTags: string;
-	paths: string[];
 }
 
 export class TagComboSearchModal extends FuzzySuggestModal<TagComboListItem> {
@@ -102,15 +101,22 @@ export default class HarveyKitPlugin extends Plugin {
 				const cacheKey = "tag-combos";
 				const results = this.cache.get(cacheKey);
 				if (!results) {
-					this.findAllTagCombinationsWithRipgrep().then((results) => {
-						console.log("results", results);
-					});
-					// this.findAllTagCombinations()
-					// 	.then((results) => {
-					// 		console.log("results", results);
-					// 		this.cache.get(cacheKey);
-					// 	})
-					// 	.catch(console.error);
+					this.findAllTagCombinationsWithRipgrep()
+						.then((results) => {
+							const items: TagComboListItem[] = [];
+
+							if (results) {
+								for (const joinedTags of results) {
+									items.push({ joinedTags });
+								}
+								const modal = new TagComboSearchModal(
+									this.app,
+									items
+								);
+								modal.open();
+							}
+						})
+						.catch(console.error);
 				}
 			},
 		});
@@ -135,13 +141,9 @@ export default class HarveyKitPlugin extends Plugin {
 
 				const items: TagComboListItem[] = [];
 				for (const joinedTags of allTagsMap.keys()) {
-					const paths = allTagsMap.get(joinedTags);
-					if (paths) {
-						items.push({
-							joinedTags,
-							paths: Array.from(paths),
-						});
-					}
+					items.push({
+						joinedTags,
+					});
 				}
 				const modal = new TagComboSearchModal(app, items);
 				modal.open();
