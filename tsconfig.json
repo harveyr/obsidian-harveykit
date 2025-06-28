@@ -13,7 +13,8 @@
 		"strictNullChecks": true,
 		"lib": ["DOM", "ES5", "ES6", "ES7"],
 		"outDir": ".",
-		"rootDir": "src"
+		"rootDir": "src/"
 	},
+	"exclude": [],
 	"include": ["src/**/*.ts"]
 }

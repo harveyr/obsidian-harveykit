@@ -1,0 +1,331 @@
+import {
+	App,
+	CachedMetadata,
+	TFile,
+	Editor,
+	MarkdownView,
+	Notice,
+	FuzzySuggestModal,
+	FileSystemAdapter,
+	MarkdownFileInfo,
+} from "obsidian";
+
+import { spawn } from "child_process";
+
+interface TagComboListItem {
+	joinedTags: string;
+}
+
+type RipGrepMatch = {
+	type: string;
+	data: {
+		path: {
+			text: string;
+		};
+		lines: {
+			text: string;
+		};
+		line_number: number;
+		absolute_offset: number;
+		submatches: Array<{
+			match: {
+				text: string;
+			};
+			start: number;
+			end: number;
+		}>;
+	};
+};
+
+export class TagComboSearchModal extends FuzzySuggestModal<TagComboListItem> {
+	private allItems: TagComboListItem[];
+
+	constructor(app: App, items: TagComboListItem[]) {
+		super(app);
+		this.setPlaceholder("Tag combinations"); // Optional: Set a placeholder
+		this.allItems = items;
+	}
+
+	getItems(): TagComboListItem[] {
+		return this.allItems;
+	}
+
+	getItemText(item: TagComboListItem): string {
+		return item.joinedTags;
+	}
+
+	onChooseItem(item: TagComboListItem, evt: MouseEvent | KeyboardEvent) {
+		const tags = item.joinedTags.split(" ");
+		const searchStr = tags
+			.map((tag) => {
+				return `tag:${tag}`;
+			})
+			.join(" ");
+		navigator.clipboard.writeText(searchStr);
+
+		new Notice("Copied search string to clipboard", 3000);
+
+		// https://discord.com/channels/686053708261228577/840286264964022302/1274754359841783889
+		const searchPlugin = (this.app as any).internalPlugins.getPluginById(
+			"global-search"
+		);
+		searchPlugin.instance.openGlobalSearch(searchStr);
+	}
+}
+function getTagsForFilePath(app: App, filePath: string): string[] {
+	const abstractFile = app.vault.getAbstractFileByPath(filePath);
+
+	if (abstractFile instanceof TFile) {
+		const fileCache: CachedMetadata | null =
+			app.metadataCache.getFileCache(abstractFile);
+
+		const tags = fileCache?.tags?.map((tag) => {
+			return tag.tag;
+		});
+		if (!tags) {
+			return [];
+		}
+
+		tags.sort();
+
+		return tags;
+	}
+	return [];
+}
+
+export function exploreTagsV2(
+	editor: Editor,
+	view: MarkdownView | MarkdownFileInfo
+) {
+	// const { app } = view;
+	// const { vault } = app;
+
+	const cacheKey = "tag-combos";
+	const results = this.cache.get(cacheKey);
+	if (!results) {
+		findAllTagCombinationsWithRipgrep()
+			.then((results) => {
+				const items: TagComboListItem[] = [];
+
+				if (results) {
+					for (const joinedTags of results) {
+						items.push({ joinedTags });
+					}
+					const modal = new TagComboSearchModal(this.app, items);
+					modal.open();
+				}
+			})
+			.catch(console.error);
+	}
+}
+
+export function exploreTagsV1(
+	editor: Editor,
+	view: MarkdownView | MarkdownFileInfo
+): void {
+	const { app } = view;
+	const { vault } = app;
+	const files = vault.getFiles();
+
+	const allTagsMap = new Map<string, Set<string>>();
+
+	files.forEach((file) => {
+		const tags = getTagsForFilePath(app, file.path);
+		const joined = tags.join(" ");
+		const tagMap = allTagsMap.get(joined) || new Set();
+		tagMap.add(file.path);
+		allTagsMap.set(joined, tagMap);
+	});
+
+	const items: TagComboListItem[] = [];
+	for (const joinedTags of allTagsMap.keys()) {
+		items.push({
+			joinedTags,
+		});
+	}
+	const modal = new TagComboSearchModal(app, items);
+	modal.open();
+}
+
+async function findAllTagCombinationsWithRipgrep(): Promise<string[] | null> {
+	// const tagRex = /(^|\s)#[a-zA-Z-/]+/gi;
+
+	const basePath = getVaultAbsolutePath();
+	if (!basePath) {
+		throw new Error(`Basepath not found`);
+	}
+
+	const rgPath = "/opt/homebrew/bin/rg";
+	const args = ["(^|\\s)#[a-zA-Z-/]+", "--glob", "*.md", "--json", basePath];
+	// const command = `${rgPath} '(^|\\s)#[a-zA-Z-/]+' --glob '*.md' --json .`;
+
+	const results: Set<string> = new Set();
+
+	function processMatchJSON(dat: any) {
+		if (dat.type !== "match") {
+			return;
+		}
+
+		const match: RipGrepMatch = dat as RipGrepMatch;
+
+		const submatches: string[] = match["data"]["submatches"].map((sm) => {
+			return sm.match.text.trim();
+		});
+
+		results.add(submatches.join(" "));
+	}
+
+	try {
+		await spawnRipgrepCommand(rgPath, args, processMatchJSON, {
+			cwd: basePath,
+		});
+	} catch (err) {
+		// TODO: Notice
+		console.error(err);
+	}
+
+	return Array.from(results);
+}
+
+function spawnRipgrepCommand(
+	rgPath: string,
+	args: string[],
+	onJsonParsed: (json: any) => void,
+	opt: { cwd: string }
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const child = spawn(rgPath, args);
+		let buffer = ""; // Buffer to hold incomplete lines
+
+		console.log(`[${rgPath} ${args.join(" ")}] spawned.`);
+
+		child.stdout.on("data", (data) => {
+			buffer += data.toString(); // Append new data to the buffer
+			let newlineIndex;
+
+			// Process line by line
+			while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+				const line = buffer.substring(0, newlineIndex).trim();
+
+				// Remove the processed line from buffer
+				buffer = buffer.substring(newlineIndex + 1);
+
+				if (line.length > 0) {
+					try {
+						const json = JSON.parse(line);
+						onJsonParsed(json); // Call the callback with the parsed JSON
+					} catch (parseError: any) {
+						reject(parseError);
+					}
+				}
+			}
+		});
+
+		child.stderr.on("data", (data) => {
+			console.error(`stderr: ${data}`);
+		});
+
+		child.on("close", (code) => {
+			// Process any remaining data in the buffer after the stream closes
+			if (buffer.length > 0) {
+				const line = buffer.trim();
+				if (line.length > 0) {
+					try {
+						const json = JSON.parse(line);
+						onJsonParsed(json);
+					} catch (parseError: any) {
+						console.error(
+							`Error parsing remaining JSON line: "${line}". Error: ${parseError.message}`
+						);
+					}
+				}
+			}
+
+			if (code !== 0) {
+				reject(new Error(`Process exited with code ${code}`));
+			} else {
+				console.log(`child process exited with code ${code}`);
+				resolve();
+			}
+		});
+
+		child.on("error", (err) => {
+			reject(new Error(`Failed to start subprocess: ${err.message}`));
+		});
+	});
+}
+
+function getVaultAbsolutePath(): string | null {
+	const adapter = this.app.vault.adapter;
+
+	if (adapter instanceof FileSystemAdapter) {
+		return adapter.getBasePath();
+	}
+
+	// For mobile or other non-file system adapters, getBasePath() might not exist
+	// or might return something else.
+	console.warn(
+		"Vault adapter is not a FileSystemAdapter. Cannot get absolute path."
+	);
+	return null;
+}
+
+// Native searching approach:
+
+// async function findAllTagCombinations(): Promise<string[]> {
+// 	const tagRex = /(^|\s)#[a-zA-Z-/]+/gi;
+
+// 	const mdFiles = this.app.vault.getMarkdownFiles();
+// 	const results: Set<string> = new Set();
+
+// 	for (const file of mdFiles) {
+// 		const content = await this.app.vault.cachedRead(file);
+// 		const matches = content.match(tagRex);
+
+// 		if (matches) {
+// 			results.add(
+// 				matches
+// 					.map((match) => {
+// 						return match.trim();
+// 					})
+// 					.join(" ")
+// 			);
+// 		}
+// 	}
+// 	return Array.from(results);
+// }
+
+// function processRgTagOutput(output: string): string[] {
+// 	const tagCombos: Set<string> = new Set();
+
+// 	for (const line of output.split("\n")) {
+// 		const parsed = JSON.parse(line);
+
+// 		if (parsed.type !== "match") {
+// 			continue;
+// 		}
+
+// 		const submatches = parsed["data"]["submatches"].map((sm) => {
+// 			return sm.match.text;
+// 		});
+
+// 		tagCombos.add(submatches.join(" "));
+// 	}
+
+// 	return Array.from(tagCombos);
+// }
+
+// function runCommandInDir(
+// 	command: string,
+// 	cwd: string
+// ): Promise<{ stdout: string; stderr: string }> {
+// 	return new Promise((resolve, reject) => {
+// 		exec(command, { cwd }, (error, stdout, stderr) => {
+// 			if (error) {
+// 				reject({ error, stdout, stderr });
+// 				return;
+// 			}
+// 			resolve({ stdout, stderr });
+// 		});
+// 	});
+// }
