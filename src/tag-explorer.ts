@@ -100,21 +100,19 @@ function getTagsForFilePath(app: App, filePath: string): string[] {
 /**
  * Find the tags in the given file path using Obsidian's metadata cache.
  */
-function getTagsForFilePathV2(app: App, filePath: string): string[] {
-	const abstractFile = app.vault.getAbstractFileByPath(filePath);
+function getTagsCombosForFile(app: App, file: TFile): Set<string> {
+	const fileCache: CachedMetadata | null =
+		app.metadataCache.getFileCache(file);
 
-	if (abstractFile instanceof TFile) {
-		const fileCache: CachedMetadata | null =
-			app.metadataCache.getFileCache(abstractFile);
-
-		return findTagCombosInFileCache(fileCache);
-	}
-	return [];
+	return findTagCombosInFileCache(fileCache);
+	return new Set();
 }
 
-function findTagCombosInFileCache(fileCache: CachedMetadata | null): string[] {
+function findTagCombosInFileCache(
+	fileCache: CachedMetadata | null
+): Set<string> {
 	if (!fileCache) {
-		return [];
+		return new Set();
 	}
 
 	function normalizeTag(tag: string): string {
@@ -125,7 +123,6 @@ function findTagCombosInFileCache(fileCache: CachedMetadata | null): string[] {
 
 	allCombos.add(fileCache.frontmatter?.tags?.map(normalizeTag).join(" "));
 
-	console.log("fileCache.tags", fileCache.tags);
 	const tagsByLine: Map<number, Set<string>> = new Map();
 	fileCache.tags?.forEach((tag) => {
 		const startLine = tag.position.start.line;
@@ -143,7 +140,7 @@ function findTagCombosInFileCache(fileCache: CachedMetadata | null): string[] {
 		allCombos.add(combo);
 	}
 
-	return Array.from(allCombos);
+	return allCombos;
 }
 
 export function exploreTagsSpike(
@@ -159,7 +156,7 @@ export function exploreTagsSpike(
 	// const meta = app.metadataCache.getFileCache(abstractFile);
 	// console.log("meta", meta);
 
-	const combos = getTagsForFilePathV2(app, "Scratchpad.md");
+	const combos = getTagsCombosForFilePath(app, "Scratchpad.md");
 
 	console.log("combos", combos);
 }
@@ -190,14 +187,31 @@ export function exploreTagsV2(
 /**
  * Use metadata cache.
  */
-// export function exploreTagsV3(
-// 	editor: Editor,
-// 	view: MarkdownView | MarkdownFileInfo
-// ) {
-// 	const { app } = view;
-// 	const { vault } = app;
-// 	const files = vault.getMarkdownFiles();
-// }
+export function exploreTagsV3(
+	editor: Editor,
+	view: MarkdownView | MarkdownFileInfo
+) {
+	console.log("Explore tags v3");
+	const { app } = view;
+	const { vault } = app;
+	const files = vault.getMarkdownFiles();
+
+	const allCombos: Set<string> = new Set();
+
+	files.forEach((file) => {
+		getTagsCombosForFile(app, file).forEach((combo) => {
+			allCombos.add(combo);
+		});
+	});
+
+	const items: TagComboListItem[] = [];
+	allCombos.forEach((combo) => {
+		items.push({ joinedTags: combo });
+	});
+
+	const modal = new TagComboSearchModal(app, items);
+	modal.open();
+}
 
 export function exploreTagsV1(
 	editor: Editor,
