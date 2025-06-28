@@ -72,6 +72,11 @@ export class TagComboSearchModal extends FuzzySuggestModal<TagComboListItem> {
 		searchPlugin.instance.openGlobalSearch(searchStr);
 	}
 }
+
+/**
+ * Find the tags in the given file path using Obsidian's metadata cache. Fast,
+ * but doesn't indicate tag proximity within the file (AFAIK).
+ */
 function getTagsForFilePath(app: App, filePath: string): string[] {
 	const abstractFile = app.vault.getAbstractFileByPath(filePath);
 
@@ -97,9 +102,6 @@ export function exploreTagsV2(
 	editor: Editor,
 	view: MarkdownView | MarkdownFileInfo
 ) {
-	// const { app } = view;
-	// const { vault } = app;
-
 	const cacheKey = "tag-combos";
 	const results = this.cache.get(cacheKey);
 	if (!results) {
@@ -148,16 +150,14 @@ export function exploreTagsV1(
 }
 
 async function findAllTagCombinationsWithRipgrep(): Promise<string[] | null> {
-	// const tagRex = /(^|\s)#[a-zA-Z-/]+/gi;
-
 	const basePath = getVaultAbsolutePath();
 	if (!basePath) {
 		throw new Error(`Basepath not found`);
 	}
 
+	// TODO: make this a config variable
 	const rgPath = "/opt/homebrew/bin/rg";
 	const args = ["(^|\\s)#[a-zA-Z-/]+", "--glob", "*.md", "--json", basePath];
-	// const command = `${rgPath} '(^|\\s)#[a-zA-Z-/]+' --glob '*.md' --json .`;
 
 	const results: Set<string> = new Set();
 
@@ -269,63 +269,3 @@ function getVaultAbsolutePath(): string | null {
 	);
 	return null;
 }
-
-// Native searching approach:
-
-// async function findAllTagCombinations(): Promise<string[]> {
-// 	const tagRex = /(^|\s)#[a-zA-Z-/]+/gi;
-
-// 	const mdFiles = this.app.vault.getMarkdownFiles();
-// 	const results: Set<string> = new Set();
-
-// 	for (const file of mdFiles) {
-// 		const content = await this.app.vault.cachedRead(file);
-// 		const matches = content.match(tagRex);
-
-// 		if (matches) {
-// 			results.add(
-// 				matches
-// 					.map((match) => {
-// 						return match.trim();
-// 					})
-// 					.join(" ")
-// 			);
-// 		}
-// 	}
-// 	return Array.from(results);
-// }
-
-// function processRgTagOutput(output: string): string[] {
-// 	const tagCombos: Set<string> = new Set();
-
-// 	for (const line of output.split("\n")) {
-// 		const parsed = JSON.parse(line);
-
-// 		if (parsed.type !== "match") {
-// 			continue;
-// 		}
-
-// 		const submatches = parsed["data"]["submatches"].map((sm) => {
-// 			return sm.match.text;
-// 		});
-
-// 		tagCombos.add(submatches.join(" "));
-// 	}
-
-// 	return Array.from(tagCombos);
-// }
-
-// function runCommandInDir(
-// 	command: string,
-// 	cwd: string
-// ): Promise<{ stdout: string; stderr: string }> {
-// 	return new Promise((resolve, reject) => {
-// 		exec(command, { cwd }, (error, stdout, stderr) => {
-// 			if (error) {
-// 				reject({ error, stdout, stderr });
-// 				return;
-// 			}
-// 			resolve({ stdout, stderr });
-// 		});
-// 	});
-// }
