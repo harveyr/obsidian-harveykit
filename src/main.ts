@@ -1,6 +1,6 @@
 import { Editor, MarkdownView, Plugin, MarkdownFileInfo } from "obsidian";
 
-import { exploreTagsV1, exploreTagsV2 } from "./tag-explorer";
+import { exploreTagsSpike, exploreTagsV1, exploreTagsV2 } from "./tag-explorer";
 
 // Remember to rename these classes and interfaces!
 
@@ -22,15 +22,22 @@ export default class HarveyKitPlugin extends Plugin {
 
 		this.addCommand({
 			id: "harvey-kit-explore-tags-spike",
-			name: "Explore tags: v2 spike",
-			editorCallback: exploreTagsV2,
+			name: "Explore tags: spike",
+			editorCallback: exploreTagsSpike,
 		});
 
 		this.addCommand({
-			id: "harvey-kit-explore-tags",
-			name: "Explore tags v1",
-			editorCallback: exploreTagsV1,
+			id: "harvey-kit-explore-tags-v2",
+			name: "Explore tags",
+			editorCallback: exploreTagsV2,
 		});
+
+		// this.addCommand({
+		// 	id: "harvey-kit-explore-tags",
+		// 	name: "Explore tags v1",
+		// 	editorCallback: exploreTagsV1,
+		// });
+
 		this.addCommand({
 			id: "harvey-kit-move-tags-to-properties",
 			name: "Move selected tags to properties",

@@ -74,8 +74,7 @@ export class TagComboSearchModal extends FuzzySuggestModal<TagComboListItem> {
 }
 
 /**
- * Find the tags in the given file path using Obsidian's metadata cache. Fast,
- * but doesn't indicate tag proximity within the file (AFAIK).
+ * Find the tags in the given file path using Obsidian's metadata cache.
  */
 function getTagsForFilePath(app: App, filePath: string): string[] {
 	const abstractFile = app.vault.getAbstractFileByPath(filePath);
@@ -96,6 +95,73 @@ function getTagsForFilePath(app: App, filePath: string): string[] {
 		return tags;
 	}
 	return [];
+}
+
+/**
+ * Find the tags in the given file path using Obsidian's metadata cache.
+ */
+function getTagsForFilePathV2(app: App, filePath: string): string[] {
+	const abstractFile = app.vault.getAbstractFileByPath(filePath);
+
+	if (abstractFile instanceof TFile) {
+		const fileCache: CachedMetadata | null =
+			app.metadataCache.getFileCache(abstractFile);
+
+		return findTagCombosInFileCache(fileCache);
+	}
+	return [];
+}
+
+function findTagCombosInFileCache(fileCache: CachedMetadata | null): string[] {
+	if (!fileCache) {
+		return [];
+	}
+
+	function normalizeTag(tag: string): string {
+		return tag[0] === "#" ? tag : `#${tag}`;
+	}
+
+	const allCombos: Set<string> = new Set();
+
+	allCombos.add(fileCache.frontmatter?.tags?.map(normalizeTag).join(" "));
+
+	console.log("fileCache.tags", fileCache.tags);
+	const tagsByLine: Map<number, Set<string>> = new Map();
+	fileCache.tags?.forEach((tag) => {
+		const startLine = tag.position.start.line;
+		const endLine = tag.position.end.line;
+
+		for (let lineNo = startLine; lineNo <= endLine; lineNo++) {
+			const lineTags = tagsByLine.get(lineNo) || new Set();
+			lineTags.add(tag.tag);
+			tagsByLine.set(lineNo, lineTags);
+		}
+	});
+
+	for (const tags of tagsByLine.values()) {
+		const combo = Array.from(tags).map(normalizeTag).join(" ");
+		allCombos.add(combo);
+	}
+
+	return Array.from(allCombos);
+}
+
+export function exploreTagsSpike(
+	editor: Editor,
+	view: MarkdownView | MarkdownFileInfo
+) {
+	const { app } = view;
+	// const abstractFile = app.vault.getAbstractFileByPath("Scratchpad.md");
+	// if (!abstractFile) {
+	// 	throw new Error(`Couldn't find Scratchpad`);
+	// }
+
+	// const meta = app.metadataCache.getFileCache(abstractFile);
+	// console.log("meta", meta);
+
+	const combos = getTagsForFilePathV2(app, "Scratchpad.md");
+
+	console.log("combos", combos);
 }
 
 export function exploreTagsV2(
@@ -120,6 +186,18 @@ export function exploreTagsV2(
 			.catch(console.error);
 	}
 }
+
+/**
+ * Use metadata cache.
+ */
+// export function exploreTagsV3(
+// 	editor: Editor,
+// 	view: MarkdownView | MarkdownFileInfo
+// ) {
+// 	const { app } = view;
+// 	const { vault } = app;
+// 	const files = vault.getMarkdownFiles();
+// }
 
 export function exploreTagsV1(
 	editor: Editor,
