@@ -7,7 +7,10 @@ import {
 	Notice,
 	Plugin,
 	FuzzySuggestModal,
+	FileSystemAdapter,
 } from "obsidian";
+
+import { exec, spawn } from "child_process";
 
 // Remember to rename these classes and interfaces!
 
@@ -99,12 +102,15 @@ export default class HarveyKitPlugin extends Plugin {
 				const cacheKey = "tag-combos";
 				const results = this.cache.get(cacheKey);
 				if (!results) {
-					this.findAllTagCombinations()
-						.then((results) => {
-							console.log("results", results);
-							this.cache.get(cacheKey);
-						})
-						.catch(console.error);
+					this.findAllTagCombinationsWithRipgrep().then((results) => {
+						console.log("results", results);
+					});
+					// this.findAllTagCombinations()
+					// 	.then((results) => {
+					// 		console.log("results", results);
+					// 		this.cache.get(cacheKey);
+					// 	})
+					// 	.catch(console.error);
 				}
 			},
 		});
@@ -225,5 +231,167 @@ export default class HarveyKitPlugin extends Plugin {
 			}
 		}
 		return Array.from(results);
+	}
+
+	async findAllTagCombinationsWithRipgrep(): Promise<string[] | null> {
+		// const tagRex = /(^|\s)#[a-zA-Z-/]+/gi;
+
+		const basePath = this.getVaultAbsolutePath();
+		if (!basePath) {
+			throw new Error(`Basepath not found`);
+		}
+
+		const rgPath = "/opt/homebrew/bin/rg";
+		const args = [
+			"(^|\\s)#[a-zA-Z-/]+",
+			"--glob",
+			"*.md",
+			"--json",
+			basePath,
+		];
+		// const command = `${rgPath} '(^|\\s)#[a-zA-Z-/]+' --glob '*.md' --json .`;
+
+		const results: Set<string> = new Set();
+
+		function processMatchJSON(dat: any) {
+			if (dat.type !== "match") {
+				return;
+			}
+
+			const submatches: string[] = dat["data"]["submatches"].map((sm) => {
+				return sm.match.text.trim();
+			});
+
+			results.add(submatches.join(" "));
+		}
+
+		try {
+			await this.spawnRipgrepCommand(rgPath, args, processMatchJSON, {
+				cwd: basePath,
+			});
+		} catch (err) {
+			// TODO: Notice
+			console.error(err);
+		}
+
+		return Array.from(results);
+	}
+
+	processRgTagOutput(output: string): string[] {
+		const tagCombos: Set<string> = new Set();
+
+		for (const line of output.split("\n")) {
+			const parsed = JSON.parse(line);
+
+			if (parsed.type !== "match") {
+				continue;
+			}
+
+			const submatches = parsed["data"]["submatches"].map((sm) => {
+				return sm.match.text;
+			});
+
+			tagCombos.add(submatches.join(" "));
+		}
+
+		return Array.from(tagCombos);
+	}
+
+	runCommandInDir(
+		command: string,
+		cwd: string
+	): Promise<{ stdout: string; stderr: string }> {
+		return new Promise((resolve, reject) => {
+			exec(command, { cwd }, (error, stdout, stderr) => {
+				if (error) {
+					reject({ error, stdout, stderr });
+					return;
+				}
+				resolve({ stdout, stderr });
+			});
+		});
+	}
+
+	spawnRipgrepCommand(
+		rgPath: string,
+		args: string[],
+		onJsonParsed: (json: any) => void,
+		opt: { cwd: string }
+	): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const child = spawn(rgPath, args);
+			let buffer = ""; // Buffer to hold incomplete lines
+
+			console.log(`[${rgPath} ${args.join(" ")}] spawned.`);
+
+			child.stdout.on("data", (data) => {
+				buffer += data.toString(); // Append new data to the buffer
+				let newlineIndex;
+
+				// Process line by line
+				while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+					const line = buffer.substring(0, newlineIndex).trim();
+
+					// Remove the processed line from buffer
+					buffer = buffer.substring(newlineIndex + 1);
+
+					if (line.length > 0) {
+						try {
+							const json = JSON.parse(line);
+							onJsonParsed(json); // Call the callback with the parsed JSON
+						} catch (parseError: any) {
+							reject(parseError);
+						}
+					}
+				}
+			});
+
+			child.stderr.on("data", (data) => {
+				console.error(`stderr: ${data}`);
+			});
+
+			child.on("close", (code) => {
+				// Process any remaining data in the buffer after the stream closes
+				if (buffer.length > 0) {
+					const line = buffer.trim();
+					if (line.length > 0) {
+						try {
+							const json = JSON.parse(line);
+							onJsonParsed(json);
+						} catch (parseError: any) {
+							console.error(
+								`Error parsing remaining JSON line: "${line}". Error: ${parseError.message}`
+							);
+						}
+					}
+				}
+
+				if (code !== 0) {
+					reject(new Error(`Process exited with code ${code}`));
+				} else {
+					console.log(`child process exited with code ${code}`);
+					resolve();
+				}
+			});
+
+			child.on("error", (err) => {
+				reject(new Error(`Failed to start subprocess: ${err.message}`));
+			});
+		});
+	}
+
+	getVaultAbsolutePath(): string | null {
+		const adapter = this.app.vault.adapter;
+
+		if (adapter instanceof FileSystemAdapter) {
+			return adapter.getBasePath();
+		}
+
+		// For mobile or other non-file system adapters, getBasePath() might not exist
+		// or might return something else.
+		console.warn(
+			"Vault adapter is not a FileSystemAdapter. Cannot get absolute path."
+		);
+		return null;
 	}
 }
