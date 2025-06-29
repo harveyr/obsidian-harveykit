@@ -1,6 +1,6 @@
 import { Editor, MarkdownView, Plugin, MarkdownFileInfo } from "obsidian";
 
-import { exploreTagsSpike, exploreTagsV3 } from "./tag-explorer";
+import { exploreTagsV3 } from "./tag-explorer";
 
 // Remember to rename these classes and interfaces!
 
@@ -10,33 +10,11 @@ export default class HarveyKitPlugin extends Plugin {
 	async onload() {
 		// This adds an editor command that can perform some operation on the current editor instance
 
-		// TODO: update cache when file changes
-		// this.registerEvent(
-		// 	this.app.vault.on("modify", (file) => {
-		// 		// Invalidate cache when a file is modified
-		// 		if (file instanceof TFile) {
-		// 			this.fileContentCache.delete(file.path);
-		// 		}
-		// 	})
-		// );
-
-		this.addCommand({
-			id: "harvey-kit-explore-tags-spike",
-			name: "Explore tags: spike",
-			editorCallback: exploreTagsSpike,
-		});
-
 		this.addCommand({
 			id: "harvey-kit-explore-tags",
 			name: "Explore tags",
 			editorCallback: exploreTagsV3,
 		});
-
-		// this.addCommand({
-		// 	id: "harvey-kit-explore-tags",
-		// 	name: "Explore tags v1",
-		// 	editorCallback: exploreTagsV1,
-		// });
 
 		this.addCommand({
 			id: "harvey-kit-move-tags-to-properties",

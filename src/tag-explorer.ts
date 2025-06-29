@@ -143,24 +143,6 @@ function findTagCombosInFileCache(
 	return allCombos;
 }
 
-export function exploreTagsSpike(
-	editor: Editor,
-	view: MarkdownView | MarkdownFileInfo
-) {
-	const { app } = view;
-	// const abstractFile = app.vault.getAbstractFileByPath("Scratchpad.md");
-	// if (!abstractFile) {
-	// 	throw new Error(`Couldn't find Scratchpad`);
-	// }
-
-	// const meta = app.metadataCache.getFileCache(abstractFile);
-	// console.log("meta", meta);
-
-	const combos = getTagsCombosForFilePath(app, "Scratchpad.md");
-
-	console.log("combos", combos);
-}
-
 export function exploreTagsV2(
 	editor: Editor,
 	view: MarkdownView | MarkdownFileInfo
