@@ -1,6 +1,6 @@
 import { Editor, MarkdownView, Plugin, MarkdownFileInfo } from "obsidian";
 
-import { exploreTagsV3 } from "./tag-explorer";
+import { handleExploreTagsCommand } from "./tag-explorer";
 
 // Remember to rename these classes and interfaces!
 
@@ -13,7 +13,7 @@ export default class HarveyKitPlugin extends Plugin {
 		this.addCommand({
 			id: "harvey-kit-explore-tags",
 			name: "Explore tags",
-			editorCallback: exploreTagsV3,
+			editorCallback: handleExploreTagsCommand,
 		});
 
 		this.addCommand({
