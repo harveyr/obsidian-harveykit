@@ -95,14 +95,12 @@ function findTagCombosFromFileCache(
 		return new Set();
 	}
 
-	function normalizeTag(tag: string): string {
-		return tag[0] === "#" ? tag : `#${tag}`;
-	}
-
 	const allCombos: Set<string> = new Set();
 
-	// TODO: filter
-	allCombos.add(fileCache.frontmatter?.tags?.map(normalizeTag).join(" "));
+	const frontmatterTags = normalizeTags(fileCache.frontmatter?.tags);
+	if (frontmatterTags.length) {
+		allCombos.add(frontmatterTags.join(" "));
+	}
 
 	const tagsByLine: Map<number, Set<string>> = new Map();
 	fileCache.tags?.forEach((tag) => {
@@ -122,4 +120,24 @@ function findTagCombosFromFileCache(
 	}
 
 	return allCombos;
+}
+
+function normalizeTag(tag: string): string {
+	return tag[0] === "#" ? tag : `#${tag}`;
+}
+
+function normalizeTags(tags: any): string[] {
+	if (!Array.isArray(tags)) {
+		console.error("Not an array:", tags);
+		return [];
+	}
+
+	return tags
+		.filter((tag: string) => {
+			if (!tag.trim()) {
+				return false;
+			}
+			return true;
+		})
+		.map(normalizeTag);
 }
