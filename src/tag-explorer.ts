@@ -105,7 +105,6 @@ function getTagsCombosForFile(app: App, file: TFile): Set<string> {
 		app.metadataCache.getFileCache(file);
 
 	return findTagCombosInFileCache(fileCache);
-	return new Set();
 }
 
 function findTagCombosInFileCache(
@@ -121,6 +120,7 @@ function findTagCombosInFileCache(
 
 	const allCombos: Set<string> = new Set();
 
+	// TODO: filter
 	allCombos.add(fileCache.frontmatter?.tags?.map(normalizeTag).join(" "));
 
 	const tagsByLine: Map<number, Set<string>> = new Map();
