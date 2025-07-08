@@ -2,6 +2,8 @@ import { Editor, MarkdownView, Plugin, MarkdownFileInfo } from "obsidian";
 
 import { handleExploreTagsCommand } from "./tag-explorer";
 
+import { handleCommandCopyLinkToBlock } from "./blocks";
+
 // Remember to rename these classes and interfaces!
 
 export default class HarveyKitPlugin extends Plugin {
@@ -79,6 +81,21 @@ export default class HarveyKitPlugin extends Plugin {
 				} else {
 					editor.exec("deleteLine");
 				}
+			},
+		});
+
+		this.addCommand({
+			id: "harveykit-copy-link-to-block",
+			name: "Copy link to current block",
+			editorCallback: (editor, view) => {
+				// TODO: what is editorCheckCallback?
+
+				const file = view.file;
+				if (!file) {
+					return;
+				}
+
+				handleCommandCopyLinkToBlock(view.app, editor, file);
 			},
 		});
 	}
