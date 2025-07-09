@@ -1,6 +1,33 @@
-import { App, Editor, SectionCache, TFile, Notice } from "obsidian";
+import {
+	App,
+	Editor,
+	SectionCache,
+	TFile,
+	MarkdownView,
+	MarkdownFileInfo,
+	Menu,
+	Notice,
+} from "obsidian";
 
 import * as crypto from "crypto";
+
+export function registerRightClickHandler(
+	menu: Menu,
+	editor: Editor,
+	view: MarkdownView | MarkdownFileInfo
+) {
+	const { app, file } = view;
+	if (!file) return;
+
+	const block = getBlock(app, editor, file);
+	if (!block) return;
+
+	menu.addItem((item) => {
+		item.setTitle("Copy link to block").onClick(() => {
+			handleCommandCopyLinkToBlock(app, editor, file);
+		});
+	});
+}
 
 export function handleCommandCopyLinkToBlock(
 	app: App,

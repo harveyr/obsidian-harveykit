@@ -2,7 +2,10 @@ import { Editor, MarkdownView, Plugin, MarkdownFileInfo } from "obsidian";
 
 import { handleExploreTagsCommand } from "./tag-explorer";
 
-import { handleCommandCopyLinkToBlock } from "./blocks";
+import {
+	handleCommandCopyLinkToBlock,
+	registerRightClickHandler,
+} from "./blocks";
 
 // Remember to rename these classes and interfaces!
 
@@ -10,7 +13,9 @@ export default class HarveyKitPlugin extends Plugin {
 	private cache: Map<string, string> = new Map();
 
 	async onload() {
-		// This adds an editor command that can perform some operation on the current editor instance
+		this.registerEvent(
+			this.app.workspace.on("editor-menu", registerRightClickHandler)
+		);
 
 		this.addCommand({
 			id: "harvey-kit-explore-tags",
