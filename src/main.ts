@@ -19,12 +19,19 @@ export default class HarveyKitPlugin extends Plugin {
 			this.app.workspace.on("editor-menu", registerRightClickHandler)
 		);
 
+		/**
+		 * Explore tag combinations across the vault.
+		 */
 		this.addCommand({
 			id: "harvey-kit-explore-tags",
 			name: "Explore tags",
 			editorCallback: handleExploreTagsCommand,
 		});
 
+		/**
+		 * Move the tags on the cursor's line into the file's YAML properties
+		 * (old-school tags -> new-school).
+		 */
 		this.addCommand({
 			id: "harvey-kit-move-tags-to-properties",
 			name: "Move selected tags to properties",
@@ -91,6 +98,9 @@ export default class HarveyKitPlugin extends Plugin {
 			},
 		});
 
+		/**
+		 * Copy a link to the current line via a block ID.
+		 */
 		this.addCommand({
 			id: "harveykit-copy-link-to-block",
 			name: "Copy link to current block",
@@ -106,12 +116,18 @@ export default class HarveyKitPlugin extends Plugin {
 			},
 		});
 
+		/**
+		 * Search all tasks across the vault.
+		 */
 		this.addCommand({
 			id: "harveykit-search-tasks",
 			name: "Search tasks",
 			editorCallback: handleSearchTasks,
 		});
 
+		/**
+		 * Logseq-esque searching of the lines in the current file.
+		 */
 		this.addCommand({
 			id: "harveykit-search-lines",
 			name: "Search lines in file",
