@@ -2,6 +2,7 @@ import { Editor, MarkdownView, Plugin, MarkdownFileInfo } from "obsidian";
 
 import { handleExploreTagsCommand } from "./tag-explorer";
 import { handleSearchTasks } from "./tasks";
+import { handleSearchLines } from "./line-search";
 
 import {
 	handleCommandCopyLinkToBlock,
@@ -108,7 +109,13 @@ export default class HarveyKitPlugin extends Plugin {
 		this.addCommand({
 			id: "harveykit-search-tasks",
 			name: "Search tasks",
-			editorCallback: handleSearchTasks
+			editorCallback: handleSearchTasks,
+		});
+
+		this.addCommand({
+			id: "harveykit-search-lines",
+			name: "Search lines in file",
+			editorCallback: handleSearchLines,
 		});
 	}
 

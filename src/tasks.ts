@@ -62,7 +62,7 @@ export function handleSearchTasks(
 
 function itemFromMatch(basePath: string, match: RipGrepMatch): TaskDescriptor {
 	try {
-		const text = match.data.lines.text;
+		const text = match.data.lines.text.trim();
 		const line = match.data.line_number;
 		const path = match.data.path.text.replace(basePath + "/", "");
 
