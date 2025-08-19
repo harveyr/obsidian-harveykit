@@ -38,9 +38,10 @@ export function getNewIndent(arg: NewIndentArg) {
 		return parentIndent;
 	}
 
-	// We want the parent index + (n * sublistIndent)
-	const indentCount = lineIndent.length / sublistIndent.length;
-	return parentIndent + sublistIndent.repeat(indentCount);
+	// We want parent index + sublist line indented only relative to the top-most sublist line
+	// const indentCount = lineIndent.length / sublistIndent.length;
+	// return parentIndent + sublistIndent.repeat(indentCount);
+	return parentIndent + lineIndent.replace(sublistIndent, "");
 }
 
 function findIndent(lines: string[]): string {
