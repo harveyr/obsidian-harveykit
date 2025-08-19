@@ -8,21 +8,36 @@ export async function handlePasteSublist(
 	view: MarkdownView | MarkdownFileInfo
 ) {
 	const sublist = await navigator.clipboard.readText();
+	const cursor = editor.getCursor();
 	const currentLine = editor.getLine(editor.getCursor().line);
 	const currentIndent = getIndent(currentLine);
 	const sublistLines = sublist.split("\n");
 	const sublistIndent = findIndent(sublistLines);
-	const newLines = sublistLines.map((line) => {
-		const lineIndent = getIndent(line);
-		const newIndent = getNewIndent({
-			lineIndent,
-			sublistIndent,
-			parentIndent: currentIndent,
-		});
-		return `${newIndent}${line.trim()}`;
-	});
 
-	console.log("newLines", newLines);
+	const newLines = sublistLines
+		.map((line) => {
+			const lineIndent = getIndent(line);
+			const newIndent = getNewIndent({
+				lineIndent,
+				sublistIndent,
+				parentIndent: currentIndent,
+			});
+			return `${newIndent}${line.trim()}`;
+		})
+		.filter((line) => {
+			return line.trim().length > 0;
+		});
+
+	const startRange = { line: cursor.line, ch: 0 };
+	if (currentLine.trim() !== "-") {
+		// If it's not a bare bullet, start on the next line
+		newLines.unshift("");
+		startRange.ch = currentLine.length;
+	}
+
+	const insertString = newLines.join("\n");
+
+	editor.replaceRange(insertString, startRange);
 }
 
 interface NewIndentArg {

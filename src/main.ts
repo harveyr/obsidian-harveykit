@@ -3,6 +3,7 @@ import { Editor, MarkdownView, Plugin, MarkdownFileInfo } from "obsidian";
 import { handleExploreTagsCommand } from "./tag-explorer";
 import { handleSearchTasks } from "./tasks";
 import { handleSearchLines } from "./line-search";
+import { handlePasteSublist } from "./sublist";
 
 import {
 	handleCommandCopyLinkToBlock,
@@ -132,6 +133,12 @@ export default class HarveyKitPlugin extends Plugin {
 			id: "harveykit-search-lines",
 			name: "Search lines in file",
 			editorCallback: handleSearchLines,
+		});
+
+		this.addCommand({
+			id: "harveykit-paste-sublist",
+			name: "Paste clipboard as sublist",
+			editorCallback: handlePasteSublist,
 		});
 	}
 
