@@ -17,6 +17,13 @@ export async function handleMarkSublistForMove(
 	}
 
 	const selection = selections[0];
+
+	// Ensure the entire first line is marked.
+	selection.anchor.ch = 0;
+
+	// If selection extends to the zeroth character of the last line, move it to
+	// the end of the prior line. This happens when you use Cmd-L to select
+	// lines.
 	if (selection.head.ch === 0 && selection.head.line > 0) {
 		selection.head.line--;
 		selection.head.ch = editor.getLine(selection.head.line).length;
