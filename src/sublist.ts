@@ -8,6 +8,10 @@ export async function handlePasteSublist(
 	view: MarkdownView | MarkdownFileInfo
 ) {
 	const sublist = await navigator.clipboard.readText();
+	pasteSublist(editor, sublist);
+}
+
+export function pasteSublist(editor: Editor, sublist: string) {
 	const cursor = editor.getCursor();
 	const currentLine = editor.getLine(editor.getCursor().line);
 	const currentIndent = getIndent(currentLine);

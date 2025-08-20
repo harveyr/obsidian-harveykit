@@ -4,18 +4,21 @@ import { handleExploreTagsCommand } from "./tag-explorer";
 import { handleSearchTasks } from "./tasks";
 import { handleSearchLines } from "./line-search";
 import { handlePasteSublist } from "./sublist";
+import * as sublistMove from "./sublist-move";
 
 import {
 	handleCommandCopyLinkToBlock,
 	registerRightClickHandler,
 } from "./blocks";
 
-// Remember to rename these classes and interfaces!
+import { VolatileCache } from "./cache";
 
 export default class HarveyKitPlugin extends Plugin {
-	private cache: Map<string, string> = new Map();
+	private cache: VolatileCache;
 
 	async onload() {
+		this.cache = {};
+
 		this.registerEvent(
 			this.app.workspace.on("editor-menu", registerRightClickHandler)
 		);
@@ -139,6 +142,30 @@ export default class HarveyKitPlugin extends Plugin {
 			id: "harveykit-paste-sublist",
 			name: "Paste clipboard as sublist",
 			editorCallback: handlePasteSublist,
+		});
+
+		this.addCommand({
+			id: "harveykit-mark-sublist-for-move",
+			name: "Mark sublist for move",
+			editorCallback: (editor, view) => {
+				sublistMove.handleMarkSublistForMove(
+					this.app,
+					editor,
+					this.cache
+				);
+			},
+		});
+
+		this.addCommand({
+			id: "harveykit-move-marked-sublist",
+			name: "Move marked sublist",
+			editorCallback: (editor, view) => {
+				sublistMove.handleMoveMarkedSublist(
+					this.app,
+					editor,
+					this.cache
+				);
+			},
 		});
 	}
 

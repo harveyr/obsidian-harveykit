@@ -10,6 +10,7 @@ import {
 } from "obsidian";
 
 import * as crypto from "crypto";
+import * as notice from "./notice";
 
 export function registerRightClickHandler(
 	menu: Menu,
@@ -34,10 +35,24 @@ export function handleCommandCopyLinkToBlock(
 	editor: Editor,
 	file: TFile
 ) {
+	const link = getBlockLink(app, editor, file);
+	navigator.clipboard
+		.writeText(link)
+		.then(() => {
+			new Notice("Block link copied to clipbooard");
+		})
+		.catch(notice.logError);
+}
+
+export function getBlockLink(app: App, editor: Editor, file: TFile): string {
+	const blockID = getOrCreatBlockID(app, editor, file);
+	return generateBlockLink(app, file, blockID);
+}
+
+function getOrCreatBlockID(app: App, editor: Editor, file: TFile): string {
 	const block = getBlock(app, editor, file);
 	if (!block) {
-		console.error("No block found");
-		return;
+		throw notice.newError("No block found");
 	}
 
 	let blockID = block.id;
@@ -49,16 +64,7 @@ export function handleCommandCopyLinkToBlock(
 		editor.setLine(lineNo, newLineContent);
 	}
 
-	const link = generateBlockLink(app, file, blockID);
-	navigator.clipboard
-		.writeText(link)
-		.then(() => {
-			new Notice("Block link copied to clipbooard");
-		})
-		.catch((err) => {
-			new Notice(`${err}`);
-			console.error(err);
-		});
+	return blockID;
 }
 
 function getBlock(
