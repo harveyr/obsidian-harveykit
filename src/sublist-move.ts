@@ -16,6 +16,12 @@ export async function handleMarkSublistForMove(
 		return;
 	}
 
+	const selection = selections[0];
+	if (selection.head.ch === 0 && selection.head.line > 0) {
+		selection.head.line--;
+		selection.head.ch = editor.getLine(selection.head.line).length;
+	}
+
 	cache.sublistMarkedFile = app.workspace.getActiveFile();
 	cache.sublistMarkedRegion = selections[0];
 	cache.sublistMarkedTime = Date.now();
