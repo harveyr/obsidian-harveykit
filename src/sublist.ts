@@ -26,7 +26,17 @@ export function pasteSublist(editor: Editor, sublist: string) {
 				sublistIndent,
 				parentIndent: currentIndent,
 			});
-			return `${newIndent}${line.trim()}`;
+
+			line = line.trim();
+			if (!line) {
+				// This will get filtered out next
+				return "";
+			}
+
+			if (!line.startsWith("- ")) {
+				line = `- ${line}`;
+			}
+			return `${newIndent}${line}`;
 		})
 		.filter((line) => {
 			return line.trim().length > 0;
