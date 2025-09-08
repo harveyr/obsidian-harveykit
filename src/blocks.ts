@@ -7,10 +7,14 @@ import {
 	MarkdownFileInfo,
 	Menu,
 	Notice,
+	ListItemCache,
+	HeadingCache,
 } from "obsidian";
 
 import * as crypto from "crypto";
 import * as notice from "./notice";
+
+type MaybeBlock = ListItemCache | SectionCache | HeadingCache | undefined;
 
 export function registerRightClickHandler(
 	menu: Menu,
@@ -67,20 +71,29 @@ function getOrCreatBlockID(app: App, editor: Editor, file: TFile): string {
 	return blockID;
 }
 
-function getBlock(
-	app: App,
-	editor: Editor,
-	file: TFile
-): SectionCache | undefined {
+function getBlock(app: App, editor: Editor, file: TFile): MaybeBlock {
 	const cursor = editor.getCursor("to");
 	const fileCache = app.metadataCache.getFileCache(file);
 
-	const block = (fileCache?.sections || []).find((section) => {
+	let block: MaybeBlock = (fileCache?.sections || []).find((section) => {
 		return (
 			section.position.start.line <= cursor.line &&
 			section.position.end.line >= cursor.line
 		);
 	});
+
+	if (block?.type === "list") {
+		block = (fileCache?.listItems || []).find((item) => {
+			return (
+				item.position.start.line <= cursor.line &&
+				item.position.end.line >= cursor.line
+			);
+		});
+	} else if (block?.type === "heading") {
+		block = fileCache?.headings?.find((heading) => {
+			return heading.position.start.line === block?.position.start.line;
+		});
+	}
 
 	return block;
 }
